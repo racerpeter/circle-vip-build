@@ -5,15 +5,21 @@ require 'thor'
 
 class ReorderCircle < Thor
   CIRCLE_API = 'https://circleci.com/api/v1'
-  CIRCLE_TOKEN = File.read("#{ENV['HOME']}/.circle_token")
 
   desc "vib BUILD_NUMBER", "Move BUILD_NUMBER to the top of the queue"
-  def vib(build_number, debug = false) 
+  def vib(build_number, debug = false)
     build_number = build_number.to_i
     @debug = !!debug
 
+    unless File.file?("#{ENV['HOME']}/.circle_token")
+      puts "Please create ~/.circle_token containing your Circle API token"
+      return 1
+    end
+
+    circle_token = File.read("#{ENV['HOME']}/.circle_token")
+
     puts "Fetching queued builds..."
-    res = get("#{CIRCLE_API}/project/mavenlink/mavenlink?circle-token=#{CIRCLE_TOKEN}&limit=100&offset=0")
+    res = get("#{CIRCLE_API}/project/mavenlink/mavenlink?circle-token=#{circle_token}&limit=100&offset=0")
     puts "Response HTTP Status Code: #{res.code}" unless res.code.to_i == 200
 
     builds = JSON.parse(res.body)
@@ -33,10 +39,10 @@ class ReorderCircle < Thor
     puts "Re-enqueueing builds ahead of yours..."
     scheduled.each do |build|
       if build["build_num"] < my_build["build_num"]
-        res = post("#{CIRCLE_API}/project/mavenlink/mavenlink/#{build["build_num"]}/cancel?circle-token=#{CIRCLE_TOKEN}")
+        res = post("#{CIRCLE_API}/project/mavenlink/mavenlink/#{build["build_num"]}/cancel?circle-token=#{circle_token}")
 
         if res.code.to_i == 200
-          res = post("#{CIRCLE_API}/project/mavenlink/mavenlink/#{build["build_num"]}/retry?circle-token=#{CIRCLE_TOKEN}")
+          res = post("#{CIRCLE_API}/project/mavenlink/mavenlink/#{build["build_num"]}/retry?circle-token=#{circle_token}")
           puts "Failed to retry build ##{build["build_num"]}: #{build["build_url"]}" unless res.code.to_i == 200
         else
           puts "Failed to cancel build ##{build["build_num"]}: #{build["build_url"]}"
