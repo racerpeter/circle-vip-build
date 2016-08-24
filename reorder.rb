@@ -4,11 +4,12 @@ require 'json'
 require 'thor'
 
 class ReorderCircle < Thor
-  CIRCLE_API = 'https://circleci.com/api/v1'
+  CIRCLE_API = 'https://circleci.com/api/v1.1'
 
-  desc "vib REPO_NAME BUILD_NUMBER", "Move BUILD_NUMBER in REPO_NAME to the top of the queue"
-  def vib(repo_name, build_number, debug = false)
+  desc "vib VCS_TYPE USERNAME REPO_NAME BUILD_NUMBER", "Move BUILD_NUMBER in USERNAME/REPO_NAME of VCS_TYPE (github or bitbucket) to the top of the queue"
+  def vib(vcs_type, username, repo, build_number, debug = false)
     build_number = build_number.to_i
+    repo_name = "#{vcs_type}/#{username}/#{repo}"
     @debug = !!debug
 
     unless File.file?("#{ENV['HOME']}/.circle_token")
